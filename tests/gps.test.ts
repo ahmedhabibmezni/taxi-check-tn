@@ -27,6 +27,23 @@ function drive(fromS: number, toS: number, speed: number, startX = 0, accuracy =
 }
 
 describe('GPS track analysis', () => {
+  it('rejects malformed coordinates and negative accuracy before they poison the track', () => {
+    const samples = drive(0, 30, 10);
+    samples[5] = { ...samples[5], lat: NaN };
+    samples[10] = { ...samples[10], accuracy: -1 };
+    samples[15] = { ...samples[15], lon: 200 };
+    const a = analyzeTrack(samples, T0, T0 + 30_000);
+    expect(a.stats.acceptedFixes).toBe(28);
+    expect(a.stats.measuredDistanceM).toBeGreaterThan(290);
+    expect(Number.isFinite(a.stats.measuredDistanceM)).toBe(true);
+  });
+
+  it('bounds a GPS outage even when both endpoint positions are identical', () => {
+    const a = analyzeTrack([drive(0, 0, 0)[0], { ...drive(0, 0, 0)[0], t: T0 + 120_000 }], T0, T0 + 120_000);
+    const gap = a.intervals.find((iv) => iv.kind === 'gap')!;
+    expect(gap.distanceLowM).toBe(0);
+    expect(gap.distanceHighM).toBeGreaterThanOrEqual(120 * 15);
+  });
   it('measures a clean straight drive accurately', () => {
     const samples = drive(0, 300, 10); // 3 km
     const a = analyzeTrack(samples, T0, T0 + 300_000);

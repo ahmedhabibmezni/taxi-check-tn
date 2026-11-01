@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="capacitor_background_geolocation_notification_icon">drawable/ic_tracking</string>
+    <string name="capacitor_background_geolocation_notification_channel_name">Ride recording</string>
+    <string name="capacitor_background_geolocation_notification_color">#f5c518</string>
+    <string name="app_name">Taxi Check TN</string>
+    <string name="title_activity_main">Taxi Check TN</string>
+    <string name="package_name">tn.taxicheck.app</string>
+    <string name="custom_url_scheme">tn.taxicheck.app</string>
+</resources>

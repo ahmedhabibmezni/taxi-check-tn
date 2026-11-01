@@ -3,3 +3,15 @@ dist
 dev-dist
 coverage
 .claude
+.tools/
+artifacts/
+*.keystore
+*.jks
+*.p12
+*.p8
+*.mobileprovision
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db

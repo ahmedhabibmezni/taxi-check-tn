@@ -111,7 +111,7 @@ export class SingleApplicationStrategy implements FareCalculationStrategy {
 
   private measuredUnits(iv: Interval, sc: Scenario): { distM: number; timeS: number; movingS: number } {
     if (iv.durationS <= 0) return { distM: iv.distanceM * sc.distFactor, timeS: 0, movingS: 0 };
-    const speed = iv.speedHintMps ?? iv.distanceM / iv.durationS;
+    const speed = iv.distanceM <= 0 ? 0 : iv.speedHintMps ?? iv.distanceM / iv.durationS;
     return speed >= sc.switchMps
       ? { distM: iv.distanceM * sc.distFactor, timeS: 0, movingS: iv.durationS }
       : { distM: 0, timeS: iv.durationS, movingS: 0 };

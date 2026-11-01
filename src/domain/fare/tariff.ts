@@ -25,7 +25,7 @@ export interface TaxiTariff {
    * crossover speed derived from the tariff itself (see crossoverSpeedMps).
    */
   switchingSpeedKmh?: number;
-  /** Fixed UTC offset of local time, in minutes. Tunisia is UTC+1 without DST. */
+  /** Fixed signed UTC offset in numeric minutes; conversion must preserve whole milliseconds. */
   utcOffsetMinutes: number;
   source?: string;
   /** Date the values were last checked by a human. */
@@ -66,21 +66,49 @@ export function validateTariff(t: TaxiTariff): string[] {
   ];
   for (const key of ints) {
     const v = t[key];
-    if (typeof v !== 'number' || !Number.isInteger(v) || v < 0) {
-      errors.push(`${key} must be a non-negative integer number of millimes`);
+    if (typeof v !== 'number' || !Number.isSafeInteger(v) || v < 0) {
+      errors.push(`${key} must be a finite non-negative safe integer number of millimes`);
     }
   }
-  if (!(t.distanceStepMeters > 0)) errors.push('distanceStepMeters must be > 0');
-  if (!(t.waitingStepSeconds > 0)) errors.push('waitingStepSeconds must be > 0');
-  if (!(t.nightMultiplier >= 1)) errors.push('nightMultiplier must be >= 1');
-  if (t.switchingSpeedKmh !== undefined && !(t.switchingSpeedKmh > 0)) {
-    errors.push('switchingSpeedKmh must be > 0 when set');
+  const steps = [['distanceStepMeters', 'distanceStepFare'], ['waitingStepSeconds', 'waitingStepFare']] as const;
+  for (const [dimension, fare] of steps) {
+    const value = t[dimension];
+    if (!Number.isFinite(value) || !(value > 0)) {
+      errors.push(`${dimension} must be finite and > 0`);
+    } else if (!Number.isFinite(1 / value) || !Number.isFinite(t[fare] / value)) {
+      errors.push(`${dimension} must yield a finite reciprocal and unit rate for ${fare}`);
+    }
+  }
+  if (!Number.isFinite(t.nightMultiplier) || !(t.nightMultiplier >= 1)) {
+    errors.push('nightMultiplier must be finite and >= 1');
+  } else {
+    const nightAmounts = t.nightAppliesToInitialFare
+      ? ['initialFare', 'distanceStepFare', 'waitingStepFare'] as const
+      : ['distanceStepFare', 'waitingStepFare'] as const;
+    for (const key of nightAmounts) {
+      if (Number.isSafeInteger(t[key]) && t[key] >= 0 && !Number.isSafeInteger(Math.round(t[key] * t.nightMultiplier))) {
+        errors.push(`nightMultiplier makes the rounded night amount for ${key} exceed safe integer millimes`);
+      }
+    }
+  }
+  if (t.switchingSpeedKmh !== undefined && (!Number.isFinite(t.switchingSpeedKmh)
+    || !(t.switchingSpeedKmh > 0) || !(t.switchingSpeedKmh / 3.6 > 0))) {
+    errors.push('switchingSpeedKmh must be finite and > 0 when set, with a positive m/s conversion');
+  }
+  if (!Number.isFinite(t.utcOffsetMinutes) || !Number.isSafeInteger(t.utcOffsetMinutes * 60_000)) {
+    errors.push('utcOffsetMinutes must be finite numeric minutes representable as safe integer milliseconds');
   }
   try {
     parseHHMM(t.nightStart);
     parseHHMM(t.nightEnd);
   } catch (e) {
     errors.push((e as Error).message);
+  }
+  if (t.switchingSpeedKmh === undefined && errors.length === 0) {
+    const speed = crossoverSpeedMps(t);
+    if (!Number.isFinite(speed) || !(speed > 0)) {
+      errors.push('Derived switching speed must be finite and > 0; set switchingSpeedKmh or correct the distance/waiting rates');
+    }
   }
   return errors;
 }

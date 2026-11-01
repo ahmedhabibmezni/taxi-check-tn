@@ -1,6 +1,6 @@
 // Generates the PWA PNG icons with no dependency (Node zlib only).
 // Design: yellow taxi tile with a dark checker band.
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 const YELLOW = [245, 197, 24];
@@ -64,3 +64,14 @@ writeFileSync(
     `</svg>`,
 );
 console.log('icons written');
+
+if (existsSync('android/app/src/main/res')) {
+  const root = 'android/app/src/main/res';
+  for (const [density, size] of Object.entries({ mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 })) {
+    const dir = `${root}/mipmap-${density}`;
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(`${dir}/ic_launcher.png`, icon(size, 0.1));
+    writeFileSync(`${dir}/ic_launcher_round.png`, icon(size, 0.1));
+    writeFileSync(`${dir}/ic_launcher_foreground.png`, icon(Math.round(size * 2.25), 0.2));
+  }
+}

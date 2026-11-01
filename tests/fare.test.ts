@@ -5,7 +5,7 @@ import { compareWithMeter } from '../src/domain/fare/compare';
 import { isNight } from '../src/domain/fare/night';
 import { crossoverSpeedMps, validateTariff } from '../src/domain/fare/tariff';
 import type { FareEstimate, Interval, TripInput } from '../src/domain/fare/types';
-import { manualTripInput } from '../src/domain/trip/tripInput';
+import { manualTripInput, validateManual } from '../src/domain/trip/tripInput';
 import { formatTnd, parseTnd } from '../src/utils/money';
 
 const tariff = getActiveTariff();
@@ -36,6 +36,15 @@ describe('tariff config', () => {
 });
 
 describe('fare engine (single application strategy)', () => {
+  it('charges waiting when displacement is zero despite a stale device speed', () => {
+    const input = trip(local(10), [[0, 180]]);
+    input.intervals[0].speedHintMps = 10;
+    expect(estimateFare(input, tariff).best).toBe(900 + 10 * 46);
+  });
+
+  it('rejects manual trips with distance but no time available for movement', () => {
+    expect(validateManual({ distanceKm: 20, durationMin: 10, stoppedMin: 10, startMs: local(10), supplements: NO_SUPP })).not.toEqual([]);
+  });
   it('1. pure daytime distance trip', () => {
     const e = estimateFare(trip(local(10), [[10_000, 1200]]), tariff);
     // floor(10000 / 79) = 126 steps x 46

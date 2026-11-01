@@ -1,4 +1,5 @@
 import type { TripRecord } from '../domain/trip/types';
+import { readCompletedTrip, type SavedTripRead } from './completedTrip';
 
 const DB_NAME = 'taxi-check';
 const STORE = 'trips';
@@ -16,8 +17,12 @@ async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
   const db = await open();
   try {
     return await new Promise<T>((resolve, reject) => {
-      const req = fn(db.transaction(STORE, mode).objectStore(STORE));
-      req.onsuccess = () => resolve(req.result);
+      const tx = db.transaction(STORE, mode);
+      const req = fn(tx.objectStore(STORE));
+      // Request success precedes commit; quota/disk failures can still abort it.
+      tx.oncomplete = () => resolve(req.result);
+      tx.onabort = () => reject(tx.error ?? new Error('Local database transaction aborted'));
+      tx.onerror = () => reject(tx.error ?? new Error('Local database transaction failed'));
       req.onerror = () => reject(req.error ?? new Error('Local database error'));
     });
   } finally {
@@ -26,11 +31,15 @@ async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
 }
 
 export const tripStore = {
-  async list(): Promise<TripRecord[]> {
-    const all = await run<TripRecord[]>('readonly', (s) => s.getAll());
-    return all.sort((a, b) => b.startMs - a.startMs);
+  async list(): Promise<unknown[]> {
+    return run<unknown[]>('readonly', (s) => s.getAll());
   },
-  get: (id: string) => run<TripRecord | undefined>('readonly', (s) => s.get(id)),
+  async get(id: string): Promise<SavedTripRead> {
+    const value = await run<unknown>('readonly', (s) => s.get(id));
+    if (value === undefined) return { status: 'missing' };
+    const trip = readCompletedTrip(value);
+    return trip ? { status: 'valid', trip } : { status: 'unreadable' };
+  },
   save: async (trip: TripRecord): Promise<void> => {
     await run('readwrite', (s) => s.put(trip));
   },

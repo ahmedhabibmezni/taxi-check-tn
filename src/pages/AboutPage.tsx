@@ -1,41 +1,47 @@
+import { useMessages } from '../localization';
 import { getActiveTariff } from '../config/tariffs';
 import { crossoverSpeedMps, switchingSpeedMps } from '../domain/fare/tariff';
-import { Disclaimer, Header, Row, tnd } from '../components/ui';
+import { Disclaimer, Header, Row, TariffDetails, tnd } from '../components/ui';
 
 export function AboutPage({ onBack }: { onBack: () => void }) {
+  const en = useMessages();
   const t = getActiveTariff();
   const sw = switchingSpeedMps(t);
   return (
     <main>
-      <Header title="About tariff" onBack={onBack} />
-      {t.notice && <p className="notice">{t.notice}</p>}
+      <Header title={en.about.aboutTariff} onBack={onBack} />
+      <TariffDetails tariffId={t.id} />
       <section className="card">
-        <Row label="Tariff" value={t.name} />
-        <Row label="Effective from" value={t.effectiveFrom ?? 'Not confirmed'} />
-        <Row label="Last reviewed" value={t.lastReviewed ?? 'Unknown'} />
-        <Row label="Initial charge" value={tnd(t.initialFare)} />
-        <Row label="Distance" value={`${tnd(t.distanceStepFare)} / ${t.distanceStepMeters} m`} />
-        <Row label="Waiting / slow" value={`${tnd(t.waitingStepFare)} / ${t.waitingStepSeconds} s`} />
-        <Row label="Night" value={`×${t.nightMultiplier} from ${t.nightStart} to ${t.nightEnd}`} />
-        <Row label="Airport departure" value={tnd(t.airportSupplement)} />
-        <Row label="Large luggage" value={`${tnd(t.luggageSupplement)} / item`} />
+        <Row label={en.about.tariff} value={t.name} />
+        <Row label={en.about.initialCharge} value={tnd(t.initialFare)} />
+        <Row label={en.about.distance} value={en.about.distanceRate(tnd(t.distanceStepFare), t.distanceStepMeters)} />
+        <Row label={en.about.waitingSlow} value={en.about.waitingRate(tnd(t.waitingStepFare), t.waitingStepSeconds)} />
+        <Row label={en.about.night} value={en.about.nightWindow(t.nightMultiplier, t.nightStart, t.nightEnd)} />
+        <Row label={en.about.airportDeparture} value={tnd(t.airportSupplement)} />
+        <Row label={en.about.largeLuggage} value={en.about.luggageRate(tnd(t.luggageSupplement))} />
         <Row
-          label="Switching speed"
-          value={sw.verified ? `${(sw.mps * 3.6).toFixed(1)} km/h` : `Not verified (using ${(crossoverSpeedMps(t) * 3.6).toFixed(1)} km/h crossover)`}
+          label={en.about.switchingSpeed}
+          value={sw.verified ? en.about.speed((sw.mps * 3.6).toFixed(1)) : en.about.unverifiedSpeed((crossoverSpeedMps(t) * 3.6).toFixed(1))}
         />
       </section>
       <section className="card">
-        <h2>Source</h2>
-        <p>{t.source ?? 'No source recorded.'}</p>
-        <h2>How the estimate works</h2>
+        <h2>{en.about.howTheEstimateWorks}</h2>
         <p>
-          The phone records GPS positions. Noisy positions and impossible jumps are filtered out. When the taxi moves faster
-          than the switching speed, distance is charged; when it is slower or stopped, time is charged, never both at once.
-          Where data is missing, the app computes the cheapest and most expensive realistic case and shows a range.
-        </p>
-        <p>Night rate is applied to the part of the ride between {t.nightStart} and {t.nightEnd}.</p>
-        <p>Everything stays on this device. No account, no server, no tracking.</p>
+          {en.about.thePhoneRecordsGPSPositionsNoisy}</p>
+        <p>{en.about.nightExplanation(t.nightStart, t.nightEnd)}</p>
+        <h2>{en.about.unverifiedModellingAssumptions}</h2>
+        <p>{en.about.distanceOrWaitingTimeIsCharged}</p>
+        <p>{en.about.initialNightExplanation(t.nightAppliesToInitialFare)}</p>
+        <p>{en.about.dayNightDistanceAndWaitingSteps}</p>
       </section>
+      <details className="card">
+        <summary>{en.privacy.title}</summary>
+        <p>{en.privacy.platformServices}</p>
+        <p>{en.privacy.activeData}</p>
+        <p>{en.privacy.historyRetention(en.history.delete)}</p>
+        <p>{en.privacy.exportCache}</p>
+        <p>{en.privacy.recipientCopies}</p>
+      </details>
       <Disclaimer />
     </main>
   );

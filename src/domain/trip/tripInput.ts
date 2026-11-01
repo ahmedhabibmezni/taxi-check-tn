@@ -22,6 +22,9 @@ export function validateManual(m: ManualTripData): string[] {
   if (m.stoppedMin != null && (!(m.stoppedMin >= 0) || m.stoppedMin > m.durationMin)) {
     errors.push('Stopped time must be between 0 and the total duration.');
   }
+  if (m.distanceKm > 0 && m.stoppedMin === m.durationMin) {
+    errors.push('A trip with distance must include some moving time.');
+  }
   if (!Number.isFinite(m.startMs)) errors.push('Start date/time is invalid.');
   if (!Number.isInteger(m.supplements.luggageItems) || m.supplements.luggageItems < 0 || m.supplements.luggageItems > 10) {
     errors.push('Luggage items must be a whole number from 0 to 10.');

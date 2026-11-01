@@ -81,7 +81,8 @@ export function analyzeTrack(
         startMs: from, durationS, kind: 'gap',
         distanceM: straightM * cfg.gapRouteFactor,
         distanceLowM: straightM,
-        distanceHighM: straightM * cfg.gapRouteFactorHigh,
+        // Equal endpoints do not rule out a detour or a loop during the outage.
+        distanceHighM: Math.max(straightM * cfg.gapRouteFactorHigh, durationS * cfg.gapMaxSpeedMps),
       });
     }
   };
@@ -98,7 +99,9 @@ export function analyzeTrack(
   const ordered = [...samples].sort((a, b) => a.t - b.t);
   for (const s of ordered) {
     if (s.t < startMs || s.t > endMs) continue;
-    if (!(s.accuracy <= cfg.maxAccuracyM)) {
+    if (!Number.isFinite(s.t) || !Number.isFinite(s.lat) || !Number.isFinite(s.lon) ||
+        Math.abs(s.lat) > 90 || Math.abs(s.lon) > 180 ||
+        !Number.isFinite(s.accuracy) || s.accuracy < 0 || s.accuracy > cfg.maxAccuracyM) {
       stats.rejectedAccuracy += 1;
       continue;
     }
@@ -109,8 +112,7 @@ export function analyzeTrack(
 
     if (!anchor) {
       // Before the first fix we know nothing about distance.
-      if ((s.t - startMs) / 1000 > cfg.gapThresholdS) pushGap(startMs, s.t, null);
-      else pushMeasured(startMs, s.t, 0);
+      pushGap(startMs, s.t, null);
       anchor = s; anchorT = s.t; lastAccepted = s; firstFix = s;
       stats.acceptedFixes += 1; accSum += s.accuracy;
       continue;
@@ -130,7 +132,7 @@ export function analyzeTrack(
       }
       // Too long with only rejected fixes: the anchor itself may be wrong.
       // Re-anchor here and treat the hole as a gap with wide bounds.
-      intervals.push({ startMs: anchorT, durationS: (s.t - anchorT) / 1000, distanceM: 0, distanceLowM: 0, distanceHighM: d, kind: 'gap' });
+      intervals.push({ startMs: anchorT, durationS: (s.t - anchorT) / 1000, distanceM: 0, distanceLowM: 0, distanceHighM: ((s.t - anchorT) / 1000) * cfg.maxSpeedMps, kind: 'gap' });
       stats.gapCount += 1;
       anchor = s; anchorT = s.t; lastAccepted = s; prevSpeed = 0;
       stats.acceptedFixes += 1; accSum += s.accuracy;
@@ -138,7 +140,7 @@ export function analyzeTrack(
     }
 
     stats.acceptedFixes += 1; accSum += s.accuracy;
-    if (typeof s.speed === 'number' && s.speed >= 0) speedHints.push(s.speed);
+    if (typeof s.speed === 'number' && Number.isFinite(s.speed) && s.speed >= 0 && s.speed <= cfg.maxSpeedMps) speedHints.push(s.speed);
 
     if (sinceLast > cfg.gapThresholdS) {
       // Close what was pending at the last fix, then bound the hole.
