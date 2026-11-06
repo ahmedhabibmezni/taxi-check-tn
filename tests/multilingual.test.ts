@@ -97,15 +97,15 @@ describe('switching without resetting work', () => {
       expect(document.documentElement.dir).toBe(languages[id].dir);
     }
   });
-  it('retains an unsaved meter edit, open export and coordinate choice without saving or repricing', () => {
+  it('retains an unsaved meter edit, open card preview and optional comparison without saving or repricing', () => {
     const trip = record(); const before = JSON.stringify(trip); const save = vi.fn();
     render(createElement('main', null, createElement(Header, { title: 'Synthetic result' }), createElement(TripResult, { trip, isSaved: true, onSave: save })));
     const meter = screen.getByLabelText("Driver's meter") as HTMLInputElement;
-    fireEvent.change(meter, { target: { value: '9.123' } }); fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.change(meter, { target: { value: '9.123' } }); fireEvent.click(screen.getByRole('button', { name: catalogs.en.card.open }));
+    fireEvent.click(screen.getByRole('checkbox', { name: catalogs.en.card.includeMeter }));
     for (const id of choices) {
-      switchTo(id); expect(meter.value).toBe('9.123'); expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
-      expect(screen.getByRole('region', { name: catalogs[id].export.optionsTitle(catalogs[id].result.exportJSON) })).toBeTruthy();
+      switchTo(id); expect(meter.value).toBe('9.123'); expect((screen.getByRole('checkbox', {name:catalogs[id].card.includeMeter}) as HTMLInputElement).checked).toBe(true);
+      expect(screen.getByRole('region', { name: catalogs[id].card.title })).toBeTruthy();
       expect(document.activeElement).toBe(selector());
     }
     expect(JSON.stringify(trip)).toBe(before); expect(save).not.toHaveBeenCalled();

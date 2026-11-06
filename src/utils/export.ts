@@ -1,8 +1,8 @@
 import type { TripRecord } from '../domain/trip/types';
 import { formatTnd } from './money';
 import { Capacitor } from '@capacitor/core';
-import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
+import { Encoding } from '@capacitor/filesystem';
+import { stageNativeExport } from './nativeExport';
 
 const CSV_HEADER = [
   'id', 'mode', 'start', 'end', 'duration_min', 'distance_km', 'moving_min', 'slow_min',
@@ -37,27 +37,7 @@ export function tripsToCsv(trips: TripRecord[], includeCoordinates = false): str
 export type ExportOutcome = 'download-requested' | 'share-returned' | 'cancelled';
 
 export async function downloadFile(name: string, content: string, type: string): Promise<ExportOutcome> {
-  if (Capacitor.isNativePlatform()) {
-    if (!name || /[\\/]/.test(name) || name === '.' || name === '..') throw new Error('Export requires a filename without directories');
-    const snapshot = content;
-    const attempt = `taxi-check-export-${crypto.randomUUID()}`;
-    await Filesystem.mkdir({ path: attempt, directory: Directory.Cache, recursive: false });
-    const path = `${attempt}/${name}`;
-    const file = await Filesystem.writeFile({ path, data: snapshot, directory: Directory.Cache, encoding: Encoding.UTF8 });
-    if (typeof file?.uri !== 'string') throw new Error('Export staging did not return a file URI');
-    const staged = new URL(file.uri);
-    if (staged.protocol !== 'file:' || staged.host !== '' || !decodeURIComponent(staged.pathname).endsWith(`/${path}`)) {
-      throw new Error('Export staging returned an unexpected file URI');
-    }
-    try {
-      await Share.share({ title: name, files: [file.uri] });
-    } catch (error) {
-      // The installed Android share plugin explicitly rejects canceled chooser results.
-      if (Capacitor.getPlatform() === 'android' && error instanceof Error && error.message === 'Share canceled') return 'cancelled';
-      throw error;
-    }
-    return 'share-returned';
-  }
+  if (Capacitor.isNativePlatform()) return stageNativeExport(name, content, Encoding.UTF8);
   const url = URL.createObjectURL(new Blob([content], { type }));
   const a = document.createElement('a');
   a.href = url;

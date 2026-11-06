@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/icon.svg'],
+      includeAssets: ['icons/icon.svg', 'fonts/*-OFL.txt', 'fonts/README.txt', 'licenses/*.txt'],
       manifest: {
         name: 'Taxi Check TN',
         short_name: 'Taxi Check',
@@ -28,7 +28,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        navigateFallbackDenylist: [/\/view(?:\/|$)/, /\/v1\/cards(?:\/|$)/],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,webmanifest}'],
       },
     }),
   ],

@@ -1,0 +1,55 @@
+# Preparation only. Applying this Blueprint provisions paid resources.
+services:
+  - type: web
+    name: taxi-check-card-service
+    runtime: node
+    plan: 0.5c-512mb
+    region: frankfurt
+    numInstances: 1
+    autoDeployTrigger: 'off'
+    buildCommand: npm ci --prefix service --ignore-scripts --omit=dev
+    startCommand: node service/run.mjs
+    healthCheckPath: /readyz
+    envVars:
+      - key: NODE_VERSION
+        value: 24.15.0
+      - key: CARD_STORAGE
+        value: postgres
+      - key: CARD_MODE
+        value: production
+      - key: CARD_TTL_MS
+        value: '604800000'
+      - key: CARD_ISSUANCE_ENABLED
+        value: 'no'
+      - key: CARD_DATABASE_TLS
+        value: verify
+      - key: CARD_MAX_CARDS
+        value: '100'
+      - key: CARD_MAX_STORE_BYTES
+        value: '64000000'
+      - key: CARD_DAILY_ISSUES
+        value: '20'
+      - key: CARD_MONTHLY_BYTES
+        value: '4000000000'
+      - key: CARD_TRUST_PROXY
+        value: render
+      - key: CARD_DATABASE_URL
+        sync: false
+      - key: CARD_DATABASE_ID
+        sync: false
+      - key: CARD_NAMESPACE
+        sync: false
+      - key: CARD_PROXY_VERIFIED
+        sync: false
+      - key: CARD_PROXY_HOPS
+        sync: false
+      - key: CARD_SERVICE_ORIGIN
+        sync: false
+      - key: CARD_ALLOWED_ORIGINS
+        sync: false
+databases:
+  - name: taxi-check-card-authority
+    plan: 0.1c-256mb
+    region: frankfurt
+    diskSizeGB: 1
+    ipAllowList: []

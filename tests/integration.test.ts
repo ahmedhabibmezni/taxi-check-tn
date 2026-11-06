@@ -7,7 +7,7 @@ import { App } from '../src/App';
 import { getActiveTariff } from '../src/config/tariffs';
 
 const fixtures = vi.hoisted(() => ({ native: false, save: vi.fn(), list: vi.fn(), minimize: vi.fn(), back: null as null | (() => void) }));
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => fixtures.native } }));
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => fixtures.native, getPlatform: () => fixtures.native ? 'android' : 'web' } }));
 vi.mock('@capacitor/app', () => ({ App: { minimizeApp: fixtures.minimize,
   addListener: vi.fn(async (_name: string, callback: () => void) => { fixtures.back = callback; return { remove: vi.fn() }; }) } }));
 vi.mock('../src/services/geolocation/watcher', () => ({ watchPosition: vi.fn(() => vi.fn()), stopKnownPositionWatches: vi.fn(), requestWakeLock: vi.fn(async () => null) }));
@@ -65,7 +65,7 @@ it.each(['Manual calculator', 'Trip history'])('uses native Back as navigation f
   fireEvent.click(screen.getByRole('button', { name: page }));
   await act(async () => fixtures.back?.());
   expect(fixtures.minimize).not.toHaveBeenCalled();
-  expect(screen.getByRole('heading', { name: 'TAXI CHECK' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Your ride. A clearer fare.' })).toBeTruthy();
   expect(localStorage.getItem('taxi-check.active-ride')).toBe(raw);
   expect(localStorage.getItem('taxi-check.native-recovery')).toBe('1');
 });beforeEach(() => { selectLanguage('en'); });

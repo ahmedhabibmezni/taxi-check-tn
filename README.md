@@ -1,5 +1,7 @@
 # Taxi Check TN
 
+An iOS source shell is now prepared with the matching Capacitor runtime. It is not built or device-validated. On a Mac, regenerate managed paths and validate/build as described in [iOS source instructions](ios/README.md); native permissions and recovery still have explicit unresolved gates.
+
 An independent fare-estimation app for Tunisian individual taxis. Record a live ride or enter distance and time manually, compare an estimate with the driver's meter, and revisit saved trips offline.
 
 This is not an official service, certified taximeter, booking app or proof of overcharging. Configured tariff values and several meter assumptions are not officially verified. A review date is not an effective date.
@@ -10,10 +12,11 @@ This is not an official service, certified taximeter, booking app or proof of ov
 - Tunisian Darija by default, with separate Modern Standard Arabic, French and English options. All catalogs are bundled offline; translations remain drafts pending qualified review.
 - Live/manual estimates, neutral meter comparisons and explicit uncertainty.
 - Local History with deliberate deletion, compatible historical readers and visible storage errors.
-- JSON/CSV exports with precise endpoints excluded by default and deliberate inclusion per export. Native attempts stage separate private-cache snapshots.
+- Share trip opens an exact offline Trip Ticket PNG preview, with optional meter comparison and distance/duration. Cards exclude coordinates, identifiers and trip dates/times. Native image attempts stage separate private-cache snapshots.
+- Optional explicitly configured local service: create an immutable bearer link, flip to its QR, copy/share and revoke through Links created here. No automatic upload. Result and History no longer expose JSON/CSV or bulk sharing.
 - Recovery safeguards for interrupted rides, unavailable tariffs and unresolved active-data cleanup.
 
-iOS delivery, a passenger-focused redesign and designed card/QR sharing through an expiring bearer-link service are planned. They are not implemented by the current Android/web application. Existing exports remain available. There are currently no accounts, application backend, analytics, ads, payments or history synchronization.
+Trip Ticket is implemented in the shared interface. The card service/viewer is local development only, not publicly deployed or production-ready. See [local service instructions and limitations](service/README.md). iOS implementation remains separate and blocked on tooling/access. There are no accounts, analytics, ads, payments or history synchronization. No service destination is configured by default.
 
 ## Development
 
@@ -56,11 +59,11 @@ The current model charges distance or waiting time at each interval, derives a c
 
 ## Data and privacy
 
-Active progress includes location samples for recovery. Completed live trips may retain endpoint coordinates locally until users delete them. Excluding coordinates from an export does not remove them from local History. Dates, times and fares can still be sensitive.
+Active progress includes location samples for recovery. Completed live trips may retain endpoint coordinates locally until users delete them. Cards always exclude endpoints and trip dates/times; this does not remove them from local History. Card values and deliberately included details can still be sensitive.
 
-The app has no current backend or analytics. Location also uses device/browser providers, including Google Play services on Android, under their own settings and policies. Explicit sharing transfers a file to a chosen destination. Local deletion does not retract recipient copies or necessarily remove prepared exports. Native snapshots have no application-managed expiry/cleanup; the OS may evict cache files.
+Only explicit Create link uploads the previewed PNG and accessible presentation to a configured sharing service. Offline image sharing does not require this upload. Location uses device/browser providers, including Google Play services on Android, under their own settings and policies. Deleting History does not revoke links or recall downloaded/recipient images, and does not necessarily remove prepared files. Native image snapshots have no app-managed expiry/cleanup; the OS may evict cache files.
 
-Planned card links require a separate upload preview and explicit creation action. Endpoints, raw GPS and full History must not upload by default. Anyone possessing a bearer link can open it; it is not an authenticated recipient restriction. Hosting, expiry and deletion details are not yet implemented.
+Anyone possessing a link or QR can view its frozen card until service expiry/revocation; recipient identity is not authenticated. Management credentials are stored separately from History, with no account recovery if lost. Seven days is a configurable LOCAL DEVELOPMENT default only. Production hosting/region/budget/domain, retention/deletion/backup/log policy, production durability/restore and public abuse/privacy review remain open. Local creation now uses server-issued, time-bounded reservations; deleted identities cannot be recreated by replaying old credentials (see [service contract](service/README.md)). Internal JSON/CSV serializers remain for compatibility tests, without ordinary passenger controls.
 
 ## Recovery and release limits
 

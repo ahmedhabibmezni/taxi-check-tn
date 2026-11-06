@@ -92,11 +92,11 @@ describe('export adapter outcomes (native calls mocked)', () => {
     await expect(downloadFile('x.csv', '', 'text/csv')).rejects.toThrow('Synthetic full cache');
     expect(platform.share).not.toHaveBeenCalled();
   });
-  it('recognizes only the installed Android plugin explicit cancellation signal', async () => {
+  it('recognizes the explicit cancellation signal from the installed Android and iOS plugins', async () => {
     platform.native = true; platform.share.mockRejectedValue(new Error('Share canceled'));
     await expect(downloadFile('x.csv', '', 'text/csv')).resolves.toBe('cancelled');
     platform.os = 'ios';
-    await expect(downloadFile('x.csv', '', 'text/csv')).rejects.toThrow('Share canceled');
+    await expect(downloadFile('x.csv', '', 'text/csv')).resolves.toBe('cancelled');
   });
   it('does not infer cancellation or success from a generic native error', async () => {
     platform.native = true; platform.share.mockRejectedValue(new Error('Synthetic share failure'));

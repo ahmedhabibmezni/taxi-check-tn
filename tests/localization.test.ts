@@ -1,13 +1,12 @@
 import { selectLanguage } from '../src/localization';
 // @vitest-environment jsdom
 import { createElement } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it } from 'vitest';
 import { en } from '../src/localization/en';
 import { presentConfigurationError, presentMessage } from '../src/localization/messages';
 import { validateTariff } from '../src/domain/fare/tariff';
 import { getActiveTariff } from '../src/config/tariffs';
-import { TripExport } from '../src/components/TripExport';
 import { Warnings, km, minutes, range, tnd } from '../src/components/ui';
 import { validateManual } from '../src/domain/trip/tripInput';
 
@@ -38,20 +37,6 @@ describe('English presentation boundaries', () => {
     expect(en.history.estimated('7.8')).toBe('Estimated: 7.8 TND');
     expect(en.history.meterComparison('9.1', '+17.3')).toBe('Meter: 9.1 TND · Difference: +17.3%');
     expect(en.result.comparisonDifference('-0.001', '-0.1')).toBe('-0.001 TND (-0.1%)');
-  });
-
-  it('renders a dynamic export label as escaped text and retains its region, focus and privacy associations', () => {
-    const label = 'Export <img src=x onerror=alert(1)> & "fixture"';
-    render(createElement(TripExport, { label, name: 'synthetic.json', format: 'json', trips: [] }));
-    const button = screen.getByRole('button', { name: label }); fireEvent.click(button);
-    const title = screen.getByRole('heading', { name: `${label} options` });
-    expect(document.activeElement).toBe(title);
-    expect(screen.getByRole('region', { name: `${label} options` }).id).toBe(button.getAttribute('aria-controls'));
-    expect(document.querySelector('img')).toBeNull();
-    const checkbox = screen.getByRole('checkbox');
-    expect(document.getElementById(checkbox.getAttribute('aria-describedby')!)?.textContent).toContain('excluded by default');
-    fireEvent.click(screen.getByRole('button', { name: 'Close export options' }));
-    expect(document.activeElement).toBe(button);
   });
 
   it('presents domain validation without changing raw messages or field-identity contracts', () => {

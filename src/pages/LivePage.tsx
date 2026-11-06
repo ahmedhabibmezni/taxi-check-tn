@@ -29,24 +29,25 @@ export function LivePage({ live, onEnd, onCancel }: Props) {
   const tariff = getTariff(ride.tariffId ?? e.tariffId);
 
   return (
-    <main>
+    <main className="live-page">
       <Header title={en.live.rideInProgress} />
-      <section className="card center">
+      <section className="fare-strip">
         <div className="big-label">{en.live.estimatedFare}</div>
         <div className="big num">~ {en.shared.money(formatTnd(e.best, 1))}</div>
         <div className="big-label">{en.live.expectedRange}</div>
         <div className="num">{range(e.low, e.high)}</div>
-        <p className="notice small">{en.live.tariffNotOfficiallyVerified}</p>
-        <p className="small muted">{en.live.thisRangeIsAnEstimateNot}</p>
+      </section>
+      <p className="notice small">{en.live.tariffNotOfficiallyVerified}</p>
+      <p className="small muted">{en.live.thisRangeIsAnEstimateNot}</p>
+      <section className="trip-metrics">
         <Row label={en.live.duration} value={formatDuration((now - ride.startMs) / 1000)} />
         <Row label={en.live.distance} value={km(distance)} />
       </section>
       <p className={`gps gps-${ride.gpsStatus}`} role="status" aria-atomic="true">{GPS_TEXT[ride.gpsStatus]}</p>
       {live.storageError && <p className="error" role="alert">{en.live.theRideIsRecordingInMemory}</p>}
-      <Warnings items={e.warnings.filter((w) => !w.startsWith('Estimate has limited') || ride.samples.length > 0)} />
       <button
         type="button"
-        className="btn primary huge"
+        className="btn primary huge end-ride"
         onClick={() => {
           const t = live.end();
           if (t) onEnd(t);
@@ -61,6 +62,7 @@ export function LivePage({ live, onEnd, onCancel }: Props) {
         }}
       >
         {en.live.discardRide}</button>
+      <Warnings items={e.warnings.filter((w) => !w.startsWith('Estimate has limited') || ride.samples.length > 0)} />
       <p className="notice">{en.shared.tariffNotice(tariff ? tariff.notice : en.live.metadataIsUnavailableForTheRide)}</p>
       <p className="muted small">{Capacitor.isNativePlatform()
         ? en.live.routeRecordingUsesAnAndroidLocation

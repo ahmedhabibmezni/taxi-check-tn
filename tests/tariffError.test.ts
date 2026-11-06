@@ -5,12 +5,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import { ACTIVE_TARIFF_ID } from '../src/config/tariffs';
-import { downloadFile } from '../src/utils/export';
+import { snapshotTripCard } from '../src/utils/tripCard';
 import type { TripRecord } from '../src/domain/trip/types';
 
 const fixtures = vi.hoisted(() => ({ mode: 'invalid-active', native: false, failLookup: false,
   watch: vi.fn(() => vi.fn()), wake: vi.fn(async () => null), stop: vi.fn(), list: vi.fn(), save: vi.fn(), remove: vi.fn(), estimate: vi.fn() }));
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => fixtures.native } }));
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => fixtures.native, getPlatform: () => fixtures.native ? 'android' : 'web' } }));
 vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn(async () => ({ remove: vi.fn() })), minimizeApp: vi.fn() } }));
 vi.mock('../src/config/tariffs', async original => {
   const actual = await original<typeof import('../src/config/tariffs')>();
@@ -37,7 +37,6 @@ vi.mock('../src/domain/fare/calculator', async original => {
 });
 vi.mock('../src/services/geolocation/watcher', () => ({ watchPosition: fixtures.watch, requestWakeLock: fixtures.wake, stopKnownPositionWatches: fixtures.stop }));
 vi.mock('../src/storage/tripStore', () => ({ tripStore: { list: fixtures.list, save: fixtures.save, remove: fixtures.remove } }));
-vi.mock('../src/utils/export', async original => ({ ...await original<typeof import('../src/utils/export')>(), downloadFile: vi.fn() }));
 
 function completed(tariffId = ACTIVE_TARIFF_ID): TripRecord {
   return { id: 'synthetic-completed', mode: 'manual', startMs: Date.now() - 60000, endMs: Date.now(), durationS: 60,
@@ -52,7 +51,7 @@ function active(tariffId = ACTIVE_TARIFF_ID) {
     gpsStatus: 'waiting', originalExtra: 'keep' }, null, 2);
 }
 beforeEach(() => { localStorage.clear(); vi.clearAllMocks(); fixtures.mode = 'invalid-active'; fixtures.native = false; fixtures.failLookup = false;
-  fixtures.list.mockResolvedValue([completed()]); fixtures.save.mockResolvedValue(undefined); vi.mocked(downloadFile).mockResolvedValue('download-requested');
+  fixtures.list.mockResolvedValue([completed()]); fixtures.save.mockResolvedValue(undefined);
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
@@ -69,8 +68,8 @@ describe('configuration failure boundary', () => {
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'fr' } });
     fireEvent.click(screen.getByRole('button', { name: catalogs.fr.app.tripHistory }));
     fireEvent.click(await screen.findByText('Estimation : 7.8 TND'));
-    fireEvent.click(screen.getByRole('button', { name: catalogs.fr.result.exportJSON }));
-    expect(screen.getByRole('heading', { name: catalogs.fr.export.optionsTitle(catalogs.fr.result.exportJSON) })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: catalogs.fr.card.open }));
+    expect(screen.getByRole('heading', { name: catalogs.fr.card.title })).toBeTruthy();
     expect(localStorage.getItem('taxi-check.active-ride')).toBe(raw); expect(localStorage.getItem('taxi-check.native-recovery')).toBe('1');
     expect(fixtures.watch).not.toHaveBeenCalled(); expect(fixtures.estimate).not.toHaveBeenCalled();
   });
@@ -91,18 +90,15 @@ describe('configuration failure boundary', () => {
     expect(fixtures.estimate).not.toHaveBeenCalled(); expect(fixtures.watch).not.toHaveBeenCalled();
   });
 
-  it.each(['JSON', 'CSV'])('keeps saved results and %s export independent of invalid active metadata', async format => {
+  it('keeps saved card preview independent of invalid active metadata', async () => {
     const record = completed(); const before = JSON.stringify(record); fixtures.list.mockResolvedValue([record]);
     render(createElement(App)); fireEvent.click(screen.getByRole('button', { name: 'Trip history' }));
     fireEvent.click(await screen.findByText('Estimated: 7.8 TND'));
     expect(screen.getByText('≈ 7.777 TND')).toBeTruthy();
     expect(screen.getByText(/Recorded tariff configuration is invalid/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: `Export ${format}` }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue export' }));
-    await waitFor(() => expect(downloadFile).toHaveBeenCalledTimes(1));
-    const content = vi.mocked(downloadFile).mock.calls[0][1];
-    if (format === 'JSON') { const exported = JSON.parse(content); expect(exported.estimate).toEqual(record.estimate); expect(exported.tariffId).toBe(record.tariffId); }
-    else expect(content).toContain('"7.777","7.000","8.000"');
+    fireEvent.click(screen.getByRole('button', { name: catalogs.en.card.open }));
+    expect(screen.getByRole('heading', { name: catalogs.en.card.title })).toBeTruthy();
+    expect(JSON.stringify(snapshotTripCard(record,'en',{comparison:false,details:false}))).toContain('7.777');
     expect(JSON.stringify(record)).toBe(before); expect(fixtures.save).not.toHaveBeenCalled(); expect(fixtures.remove).not.toHaveBeenCalled();
     expect(fixtures.estimate).not.toHaveBeenCalled(); expect(fixtures.watch).not.toHaveBeenCalled();
   });

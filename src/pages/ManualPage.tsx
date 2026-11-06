@@ -72,7 +72,7 @@ export function ManualPage({ onBack, onResult }: Props) {
   };
 
   return (
-    <main>
+    <main className="manual-page">
       <Header title={en.manual.manualCalculator} onBack={onBack} />
       {errors.length > 0 && (
         <div className="errors" tabIndex={-1} ref={summary} aria-labelledby="manual-errors-title">
@@ -88,7 +88,7 @@ export function ManualPage({ onBack, onResult }: Props) {
           </ul>
         </div>
       )}
-      <section className="card">
+      <section className="card form-sheet">
         <label className="field" htmlFor="manual-distance">
           {en.manual.distanceKm}</label>
         <input {...errorProps('distance')} inputMode="decimal" value={distance} onChange={(e) => setDistance(e.target.value)} placeholder={en.manual.distanceExample} />

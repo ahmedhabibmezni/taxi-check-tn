@@ -85,7 +85,9 @@ describe('recorded tariff and result feedback', () => {
   it('keeps the recorded quality score separate from tariff verification and live announcements', () => {
     const trip = record();
     render(createElement(TripResult, { trip, isSaved: false, onSave: vi.fn() }));
-    const quality = screen.getByRole('region', { name: 'Input quality' });
+    const quality = screen.getByRole('group', { name: 'Input quality' });
+    fireEvent.click(within(quality).getByText('Input quality'));
+    expect(quality.hasAttribute('open')).toBe(true);
     expect(within(quality).getByText(`${Math.round(trip.confidence * 100)}%`)).toBeTruthy();
     expect(quality.closest('[role="status"], [aria-live]')).toBeNull();
     expect(within(screen.getByRole('region', { name: 'Tariff verification' })).queryByText(/35%/)).toBeNull();

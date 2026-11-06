@@ -11,7 +11,7 @@ const gps = vi.hoisted(() => ({
   requestWakeLock: vi.fn(async (): Promise<{ release: () => Promise<void> } | null> => null),
   stopKnown: vi.fn(), native: false,
 }));
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => gps.native } }));
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => gps.native, getPlatform: () => gps.native ? 'android' : 'web' } }));
 vi.mock('../src/services/geolocation/watcher', () => ({
   watchPosition: (sample: (s: unknown) => void, error: (e: string) => void) => {
     const stop = vi.fn(); gps.starts.push({ sample, error, stop }); return stop;

@@ -3,14 +3,14 @@ import { stopKnownPositionWatches, watchPosition } from '../src/services/geoloca
 import { selectLanguage } from '../src/localization';
 
 const native = vi.hoisted(() => ({
-  addWatcher: vi.fn(), removeWatcher: vi.fn(async () => undefined),
+  os:'android', addWatcher: vi.fn(), removeWatcher: vi.fn(async () => undefined),
   checkPermissions: vi.fn(async () => ({ display: 'granted' })),
   requestPermissions: vi.fn(async () => ({ display: 'granted' })),
 }));
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true }, registerPlugin: () => native }));
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true, getPlatform: () => native.os }, registerPlugin: () => native }));
 vi.mock('@capacitor/local-notifications', () => ({ LocalNotifications: native }));
 
-beforeEach(() => { selectLanguage('en'); vi.clearAllMocks(); native.addWatcher.mockResolvedValue('gps-1'); });
+beforeEach(() => { native.os='android'; selectLanguage('en'); vi.clearAllMocks(); native.addWatcher.mockResolvedValue('gps-1'); });
 afterEach(() => { stopKnownPositionWatches(); vi.restoreAllMocks(); });
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 
@@ -77,4 +77,20 @@ describe('Android GPS adapter', () => {
     await flush();
     expect(error).toHaveBeenCalledWith('denied');
   });
+});
+
+it('iOS starts location without requesting unrelated notification permission',async()=>{
+ native.os='ios';const stop=watchPosition(vi.fn(),vi.fn());await flush();
+ expect(native.checkPermissions).not.toHaveBeenCalled();expect(native.requestPermissions).not.toHaveBeenCalled();
+ expect(native.addWatcher).toHaveBeenCalledWith(expect.objectContaining({requestPermissions:true,backgroundMessage:expect.any(String)}),expect.any(Function));
+ stop();expect(native.removeWatcher).toHaveBeenCalledWith({id:'gps-1'});
+});
+it('iOS removes a late-starting watcher and suppresses callbacks after cancellation',async()=>{
+ native.os='ios';let complete!:(id:string)=>void;native.addWatcher.mockImplementationOnce(()=>new Promise<string>(resolve=>{complete=resolve;}));
+ const sample=vi.fn(),stop=watchPosition(sample,vi.fn());await flush();const callback=native.addWatcher.mock.calls[0][1];stop();complete('ios-late');await flush();
+ callback({time:1000,latitude:36,longitude:10,accuracy:5});expect(sample).not.toHaveBeenCalled();expect(native.removeWatcher).toHaveBeenCalledWith({id:'ios-late'});
+});
+it('Android still requests notification permission only when prompted',async()=>{
+ native.checkPermissions.mockResolvedValueOnce({display:'prompt'});watchPosition(vi.fn(),vi.fn());await flush();
+ expect(native.requestPermissions).toHaveBeenCalledTimes(1);expect(native.addWatcher).toHaveBeenCalledTimes(1);
 });

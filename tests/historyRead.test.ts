@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { tripStore } from '../src/storage/tripStore';
 import { TripResult } from '../src/components/TripResult';
@@ -10,13 +10,11 @@ import { readCompletedHistory, readCompletedTrip } from '../src/storage/complete
 import { HistoryPage } from '../src/pages/HistoryPage';
 import { App } from '../src/App';
 import { catalogs, selectLanguage, type Language } from '../src/localization';
-import { downloadFile } from '../src/utils/export';
+import { tripToJson } from '../src/utils/export';
 
 const gps = vi.hoisted(() => ({ watch: vi.fn(() => vi.fn()), stop: vi.fn() }));
 vi.mock('../src/services/geolocation/watcher', () => ({ watchPosition: gps.watch,
   requestWakeLock: vi.fn(async () => null), stopKnownPositionWatches: gps.stop }));
-vi.mock('../src/utils/export', async original => ({ ...await original<typeof import('../src/utils/export')>(),
-  downloadFile: vi.fn(async () => 'download-requested') }));
 
 function record(): TripRecord {
   return { id: 'synthetic-c2', mode: 'manual', startMs: 0, endMs: 60000, durationS: 60,
@@ -120,26 +118,22 @@ it.each([undefined, null, record()])('direct get distinguishes missing/unreadabl
 it('does not convert direct database read failure to missing', async () => {
   database([], true); await expect(tripStore.get('id')).rejects.toThrow('Synthetic read failure');
 });
-it.each(['en', 'aeb', 'ar', 'fr'] as Language[])('renders mixed History and blocks misleading bulk export in %s', async language => {
+it.each(['en', 'aeb', 'ar', 'fr'] as Language[])('renders mixed History and offers individual card preview in %s', async language => {
   selectLanguage(language); const copy = catalogs[language];
   const values = [null, record(), { id: 'invalid' }]; const before = structuredClone(values);
   const { writes } = database(values); const onOpen = vi.fn();
   const view = render(createElement(HistoryPage, { onBack: vi.fn(), onOpen }));
   expect(await screen.findByText(copy.historyRead.partial(2))).toBeTruthy();
-  expect(screen.getByText(copy.historyRead.bulkBlocked(2))).toBeTruthy();
-  expect(screen.queryByRole('button', { name: copy.history.exportAllAsCSV })).toBeNull();
+  expect(screen.queryByRole('button', { name: /CSV|JSON/ })).toBeNull();
   fireEvent.click(screen.getByText(copy.history.estimated('7.8')));
   expect(onOpen).toHaveBeenCalledWith(record()); expect(values).toEqual(before); expect(writes).not.toHaveBeenCalled();
   view.unmount();
   render(createElement(TripResult, { trip: onOpen.mock.calls[0][0], isSaved: true, onSave: vi.fn() }));
   expect(screen.getByText('Unknown historical warning')).toBeTruthy();
   expect(screen.getByText(copy.shared.tariffMetadataIsUnavailableForThis)).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: copy.result.exportJSON }));
-  expect(document.activeElement).toBe(screen.getByRole('heading', { name: copy.export.optionsTitle(copy.result.exportJSON) }));
-  expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
-  fireEvent.click(screen.getByRole('button', { name: copy.export.continueExport }));
-  await waitFor(() => expect(downloadFile).toHaveBeenCalledTimes(1));
-  expect(JSON.parse(vi.mocked(downloadFile).mock.calls[0][1])).toEqual(record());
+  fireEvent.click(screen.getByRole('button', { name: copy.card.open }));
+  expect(document.activeElement).toBe(screen.getByRole('heading', { name: copy.card.title }));
+  expect((screen.getByRole('checkbox', { name: copy.card.includeDetails }) as HTMLInputElement).checked).toBe(false);
   expect(values).toEqual(before); expect(writes).not.toHaveBeenCalled();
 });
 it.each(['en', 'aeb', 'ar', 'fr'] as Language[])('shows all-unreadable, not empty, in %s', async language => {
@@ -147,8 +141,7 @@ it.each(['en', 'aeb', 'ar', 'fr'] as Language[])('shows all-unreadable, not empt
   render(createElement(HistoryPage, { onBack: vi.fn(), onOpen: vi.fn() }));
   expect(await screen.findByText(copy.historyRead.allUnreadable(2))).toBeTruthy();
   expect(screen.queryByText(copy.history.noSavedTripsYetReturnTo)).toBeNull();
-  expect(screen.queryByText(copy.historyRead.bulkBlocked(2))).toBeNull();
-  expect(screen.queryByRole('button', { name: copy.history.exportAllAsCSV })).toBeNull();
+  expect(screen.queryByRole('button', { name: /CSV|JSON/ })).toBeNull();
 });
 it('reports database-open failure and a failed retry without implying empty History or mutating records', async () => {
   const open = vi.fn(() => { throw new Error('Synthetic database unavailable'); });
@@ -178,7 +171,7 @@ it('keeps malformed direct Results noninteractive and can subsequently display a
   expect(screen.getByRole('alert').textContent).toBe(catalogs.en.historyRead.resultUnreadable);
   expect(screen.queryByRole('button')).toBeNull();
   view.rerender(createElement(TripResult, { trip: record(), isSaved: true, onSave: save }));
-  expect(screen.getByRole('button', { name: 'Export JSON' })).toBeTruthy(); expect(save).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: catalogs.en.card.open })).toBeTruthy(); expect(save).not.toHaveBeenCalled();
 });
 it('shows an omitted comparison honestly and preserves zero meter and original comparison values during unedited export', async () => {
   const trip = { ...record(), meter: 0, diff: -7777, diffPct: 0 };
@@ -186,10 +179,9 @@ it('shows an omitted comparison honestly and preserves zero meter and original c
   const view = render(createElement(HistoryPage, { onBack: vi.fn(), onOpen: vi.fn() }));
   expect(await screen.findByText(catalogs.en.historyRead.meterWithoutComparison('0.0'))).toBeTruthy(); view.unmount();
   render(createElement(TripResult, { trip, isSaved: true, onSave: vi.fn() }));
-  fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Continue export' }));
-  await waitFor(() => expect(downloadFile).toHaveBeenCalledTimes(1));
-  expect(JSON.parse(vi.mocked(downloadFile).mock.calls[0][1])).toEqual(trip);
+  expect(JSON.parse(tripToJson(trip, false))).toEqual(trip);
+  fireEvent.click(screen.getByRole('button', { name: catalogs.en.card.open }));
+  expect(screen.getByRole('heading', { name: catalogs.en.card.title })).toBeTruthy();
 });
 it('retains C1 guard data and independent Manual/History navigation with mixed completed data', async () => {
   const raw = '{ malformed active'; localStorage.setItem('taxi-check.active-ride', raw);
@@ -202,7 +194,7 @@ it('retains C1 guard data and independent Manual/History navigation with mixed c
   fireEvent.click(screen.getByRole('button', { name: 'Trip history' }));
   expect(await screen.findByText(catalogs.en.historyRead.partial(1))).toBeTruthy();
   fireEvent.click(screen.getByText(catalogs.en.history.estimated('7.8')));
-  expect(screen.getByRole('button', { name: 'Export JSON' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: catalogs.en.card.open })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByText(catalogs.en.historyRead.partial(1))).toBeTruthy();
   view.unmount(); render(createElement(App));

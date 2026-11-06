@@ -1,3 +1,4 @@
+import { isIosPlatform, canAcknowledgeNativeRecovery } from '../platform/capabilities';
 import { en } from '../localization/en';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getActiveTariff, getTariff } from '../config/tariffs';
@@ -33,6 +34,7 @@ function restoredState(read: ActiveRideRead): { ride: ActiveRide | null; recover
   if (typeof restored.tariffId !== 'string' || !restored.tariffId.trim() || !getTariff(restored.tariffId)) {
     return { ride: null, recovery: { kind: 'tariff', ride: restored } };
   }
+  if(isIosPlatform())return {ride:null,recovery:{kind:'storage',reason:'present'}};
   return { ride: restored as ActiveRide, recovery: null };
 }
 
@@ -218,7 +220,7 @@ export function useLiveRide(initialRead?: ActiveRideRead) {
   }, []);
 
   const acknowledgeNativeRecovery = useCallback((): boolean => {
-    if (!nativeBlockRef.current || recoveryRef.current) return false;
+    if (!canAcknowledgeNativeRecovery() || !nativeBlockRef.current || recoveryRef.current) return false;
     if (!clearNativeRecovery()) {
       // Re-establish the guard if removal succeeded but its readback failed.
       establishNativeRecovery();

@@ -1,0 +1,6 @@
+import {randomBytes} from 'node:crypto';
+import {deflateSync} from 'node:zlib';
+export function crc(bytes){let c=-1;for(const b of bytes){c^=b;for(let i=0;i<8;i++)c=(c>>>1)^(0xedb88320&-(c&1));}return(c^-1)>>>0;}
+export function chunk(type,data){const b=Buffer.concat([Buffer.alloc(4),Buffer.from(type),data,Buffer.alloc(4)]);b.writeUInt32BE(data.length);b.writeUInt32BE(crc(b.subarray(4,-4)),b.length-4);return b;}
+function png(){const header=Buffer.alloc(13);header.writeUInt32BE(1200);header.writeUInt32BE(800,4);header[8]=8;header[9]=6;return Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'),chunk('IHDR',header),chunk('IDAT',deflateSync(Buffer.alloc((1200*4+1)*800))),chunk('IEND',Buffer.alloc(0))]).toString('base64');}
+export function fixture(language='en'){return {version:2,viewToken:randomBytes(32).toString('base64url'),creationToken:randomBytes(32).toString('base64url'),png:png(),snapshot:{language,direction:['ar','aeb'].includes(language)?'rtl':'ltr',blocks:['label','fare','label','range','text','text','text'].map((kind,i)=>({kind,text:['Estimated fare','4.074 TND','Expected range','3.844 – 4.350 TND','Independent estimate','Unverified tariff','GPS and meter caveat'][i]}))}};}

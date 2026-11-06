@@ -11,7 +11,7 @@ import type { TripRecord } from '../src/domain/trip/types';
 
 const fixtures = vi.hoisted(() => ({ watch: vi.fn(() => vi.fn()), native: false, stop: vi.fn(),
   list: vi.fn(), save: vi.fn(), remove: vi.fn(), export: vi.fn(async (_name: string, _content: string, _type: string) => 'download-requested' as const) }));
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => fixtures.native } }));
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => fixtures.native, getPlatform: () => fixtures.native ? 'android' : 'web' } }));
 vi.mock('../src/services/geolocation/watcher', () => ({ watchPosition: fixtures.watch,
   requestWakeLock: vi.fn(async () => null), stopKnownPositionWatches: fixtures.stop }));
 vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn(async () => ({ remove: vi.fn() })), minimizeApp: vi.fn() } }));
@@ -199,10 +199,9 @@ it.each(['aeb', 'ar', 'fr', 'en'] as Language[])('retains independent Manual/His
   fireEvent.click(screen.getByRole('button', { name: copy.app.tripHistory }));
   fireEvent.click(await screen.findByText(copy.history.estimated('7.8')));
   expect(screen.getByText(text => text.replace(/[\u2066-\u2069]/g, '') === '≈ 7.777 TND')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: copy.result.exportJSON }));
-  fireEvent.click(screen.getByRole('button', { name: copy.export.continueExport }));
-  expect(fixtures.export).toHaveBeenCalledTimes(1);
-  expect(JSON.parse(fixtures.export.mock.calls[0][1] as string).estimate.best).toBe(7777);
+  fireEvent.click(screen.getByRole('button', { name: copy.card.open }));
+  expect(screen.getByRole('heading',{name:copy.card.title})).toBeTruthy();
+  expect(fixtures.export).not.toHaveBeenCalled();
   expect(JSON.stringify(trip)).toBe(before); expect(localStorage.getItem(key)).toBe(raw);
   expect(fixtures.save).not.toHaveBeenCalled(); expect(fixtures.remove).not.toHaveBeenCalled(); expect(fixtures.watch).not.toHaveBeenCalled();
   first.unmount(); render(createElement(App));
@@ -239,9 +238,8 @@ it.each([false, true])('retains Manual/History/export after an active read excep
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   fireEvent.click(screen.getByRole('button', { name: 'Trip history' }));
   fireEvent.click(await screen.findByText('Estimated: 7.8 TND'));
-  fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Continue export' }));
-  expect(fixtures.export).toHaveBeenCalledTimes(1); expect(fixtures.watch).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: catalogs.en.card.open }));
+  expect(fixtures.export).not.toHaveBeenCalled(); expect(fixtures.watch).not.toHaveBeenCalled();
   expect(fixtures.save).not.toHaveBeenCalled(); expect(fixtures.remove).not.toHaveBeenCalled();
   expect(get.call(localStorage, key)).toBe('{ retained');
   if (native) expect(get.call(localStorage, guard)).toBe('1');

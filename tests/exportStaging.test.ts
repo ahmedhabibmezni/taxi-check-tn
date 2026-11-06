@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { downloadFile, tripToJson, tripsToCsv } from '../src/utils/export';
 import type { TripRecord } from '../src/domain/trip/types';
 import { TripResult } from '../src/components/TripResult';
+import { renderTripCard } from '../src/utils/tripCard';
 import { selectLanguage } from '../src/localization';
 
 const native = vi.hoisted(() => ({ mkdir: vi.fn(), write: vi.fn(), share: vi.fn() }));
@@ -13,12 +14,15 @@ vi.mock('@capacitor/filesystem', () => ({ Directory: { Cache: 'CACHE' }, Encodin
   Filesystem: { mkdir: native.mkdir, writeFile: native.write } }));
 vi.mock('@capacitor/share', () => ({ Share: { share: native.share } }));
 
+vi.mock('../src/utils/tripCard',async original=>({...await original<typeof import('../src/utils/tripCard')>(),renderTripCard:vi.fn()}));
 const files = new Map<string, string>();
 const directories = new Set<string>();
 const events: string[] = [];
 const uri = (path: string) => `file:///private/cache/${path.split('/').map(encodeURIComponent).join('/')}`;
 beforeEach(() => {
   vi.resetAllMocks(); files.clear(); directories.clear(); events.length = 0; selectLanguage('en');
+  URL.createObjectURL=vi.fn(()=> 'blob:card');URL.revokeObjectURL=vi.fn();
+  vi.mocked(renderTripCard).mockImplementation(async snapshot=>({snapshot,blob:new Blob([JSON.stringify(snapshot)],{type:'image/png'}),width:1200,height:1600}));
   native.mkdir.mockImplementation(async ({ path }) => {
     if (directories.has(path)) throw new Error('Directory already exists');
     directories.add(path); events.push(`mkdir:${path}`);
@@ -177,22 +181,21 @@ it('retains spaces, punctuation and Unicode in the original visible basename and
   expect(native.write.mock.calls[0][0].path.endsWith(`/${name}`)).toBe(true);
   expect(native.share.mock.calls[0][0]).toEqual({ title: name, files: [uri(native.write.mock.calls[0][0].path)] });
 });
-it('stages current unsaved meter and coordinate choices through the actual UI adapter, including retry', async () => {
-  const value = trip(); const original = JSON.stringify(value); const onSave = vi.fn();
-  native.share.mockRejectedValueOnce(new Error('Synthetic share failure'));
-  render(createElement(TripResult, { trip: value, isSaved: true, onSave }));
-  fireEvent.change(screen.getByLabelText("Driver's meter"), { target: { value: '9.123' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
-  expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
-  fireEvent.click(screen.getByRole('checkbox'));
-  fireEvent.click(screen.getByRole('button', { name: 'Continue export' }));
-  await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Delivery is not confirmed'));
-  const firstPath = native.write.mock.calls[0][0].path; const firstContent = files.get(firstPath)!;
-  expect(JSON.parse(firstContent).meter).toBe(9123); expect(JSON.parse(firstContent).startCoords).toEqual(value.startCoords);
-  fireEvent.change(screen.getByLabelText("Driver's meter"), { target: { value: '8.765' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Retry export' }));
-  await waitFor(() => expect(screen.getByText('The share action returned. Delivery to the recipient is not confirmed.')).toBeTruthy());
-  const retryPath = native.write.mock.calls[1][0].path;
-  expect(retryPath).not.toBe(firstPath); expect(JSON.parse(files.get(retryPath)!).meter).toBe(8765);
-  expect(files.get(firstPath)).toBe(firstContent); expect(JSON.stringify(value)).toBe(original); expect(onSave).not.toHaveBeenCalled();
+it('stages the frozen unsaved-meter card through the actual native UI adapter, including retry', async () => {
+  const value=trip(), original=JSON.stringify(value), onSave=vi.fn();native.share.mockRejectedValueOnce(new Error('Synthetic share failure'));
+  render(createElement(TripResult,{trip:value,isSaved:true,onSave}));
+  fireEvent.change(screen.getByLabelText("Driver's meter"),{target:{value:'9.123'}});
+  fireEvent.click(screen.getByRole('button',{name:'Share trip'}));
+  fireEvent.click(screen.getByRole('checkbox',{name:'Include entered meter and comparison'}));
+  fireEvent.click(screen.getByRole('button',{name:'Prepare PNG preview'}));await screen.findByRole('img');
+  fireEvent.click(screen.getByRole('button',{name:'Share card image'}));
+  await waitFor(()=>expect(screen.getByRole('alert').textContent).toContain('Delivery is not confirmed'));
+  const firstPath=native.write.mock.calls[0][0].path, firstContent=files.get(firstPath)!;
+  const text=new TextDecoder().decode(Uint8Array.from(atob(firstContent),c=>c.charCodeAt(0)));
+  expect(text).toContain('9.123');expect(text).not.toContain('startCoords');expect(text).not.toContain(value.id);
+  fireEvent.change(screen.getByLabelText("Driver's meter"),{target:{value:'8.765'}});
+  fireEvent.click(screen.getByRole('button',{name:'Retry sharing or download'}));
+  await screen.findByText('The share action returned. Delivery to the recipient is not confirmed.');
+  const retryPath=native.write.mock.calls[1][0].path;expect(retryPath).not.toBe(firstPath);expect(files.get(retryPath)).toBe(firstContent);
+  expect(files.get(firstPath)).toBe(firstContent);expect(JSON.stringify(value)).toBe(original);expect(onSave).not.toHaveBeenCalled();
 });

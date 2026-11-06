@@ -1,3 +1,4 @@
+import { canAcknowledgeNativeRecovery } from '../platform/capabilities';
 import { useMessages } from '../localization';
 import { presentMessage } from '../localization/messages';
 import { Header } from '../components/ui';
@@ -11,15 +12,15 @@ export function NativeRecoveryPage({ error, onAcknowledge, onHome }: {
     <p className="notice" role="status">{en.nativeRecovery.recordingIsBlockedAPreviousAndroid}</p>
     <section className="card">
       <p>{en.nativeRecovery.toStopThePreviousService}</p>
-      <ol>
+      {canAcknowledgeNativeRecovery() && <ol>
         <li>{en.nativeRecovery.openAndroidSettingsAppsTaxiCheck}</li>
         <li>{en.nativeRecovery.selectForceStopAndConfirmDo}</li>
         <li>{en.nativeRecovery.reopenTaxiCheckThenConfirmBelow}</li>
-      </ol>
+      </ol>}
       <p>{en.nativeRecovery.thisAppCannotVerifyThatAndroid}</p>
     </section>
     {error && <p className="error" role="alert">{presentMessage(error)}</p>}
-    <button type="button" className="btn primary" onClick={onAcknowledge}>{en.nativeRecovery.iForceStoppedAndReopenedThe}</button>
+    {canAcknowledgeNativeRecovery() && <button type="button" className="btn primary" onClick={onAcknowledge}>{en.nativeRecovery.iForceStoppedAndReopenedThe}</button>}
     <button type="button" className="btn secondary" onClick={onHome}>{en.nativeRecovery.goToHomeKeepRecoveryPending}</button>
     <p className="muted">{en.nativeRecovery.manualHistoryAndAboutRemainAvailable}</p>
   </main>;

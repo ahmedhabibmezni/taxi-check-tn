@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { compareWithMeter } from '../domain/fare/compare';
 import type { TripRecord } from '../domain/trip/types';
 import { readCompletedTrip } from '../storage/completedTrip';
-import { TripExport } from './TripExport';
+import { TripCardExport } from './TripCardExport';
 import { formatSignedTnd, formatTnd, parseTnd } from '../utils/money';
 import { Disclaimer, km, minutes, range, Row, TariffDetails, tnd, Warnings } from './ui';
 
@@ -64,25 +64,21 @@ function ReadableTripResult({ trip, isSaved, onSave, autoSavePending = false, in
 
   return (
     <>
-      <section className="card">
+      <section className="fare-strip">
         <div className="big-label">{en.result.estimatedFare}</div>
         <div className="big num">≈ {tnd(trip.estimate.best)}</div>
         <Row label={en.result.expectedRange} value={range(trip.estimate.low, trip.estimate.high)} />
-        <p className="small muted">{en.result.anIndependentEstimateNotAGuaranteed}</p>
+      </section>
+      <p className="small muted">{en.result.anIndependentEstimateNotAGuaranteed}</p>
+      <p className="notice small">{en.live.tariffNotOfficiallyVerified}</p>
+      <section className="trip-metrics">
         <Row label={en.result.distance} value={km(trip.distanceM)} />
         <Row label={en.result.duration} value={minutes(trip.durationS)} />
         <Row label={en.result.movingSlow} value={en.result.movingSlowValue(minutes(trip.movingTimeS), minutes(trip.slowTimeS))} />
       </section>
 
       <Warnings items={trip.warnings} />
-      <TariffDetails tariffId={trip.tariffId} />
-      <section className="card" aria-label={en.result.inputQuality}>
-        <h2>{en.result.inputQuality}</h2>
-        <Row label={en.result.recordedInputQualityScore} value={en.result.qualityScore(Math.round(trip.confidence * 100))} />
-        <p>{en.result.thisExistingScoreReflectsGPSCoverage}</p>
-      </section>
-
-      <section className="card">
+      <section className="card meter-section">
         <label className="field" htmlFor="meter">{en.result.driversMeter}</label>
         <div className="meter-input">
           <input
@@ -121,6 +117,7 @@ function ReadableTripResult({ trip, isSaved, onSave, autoSavePending = false, in
         </p>
       </section>
 
+      <TripCardExport trip={updated} disabled={invalidMeter} />
       <details className="card">
         <summary>{en.result.breakdown}</summary>
         <Row label={en.result.initialCharge} value={tnd(b.initialFare)} />
@@ -133,10 +130,15 @@ function ReadableTripResult({ trip, isSaved, onSave, autoSavePending = false, in
         <Row label={en.result.recordedTariffID} value={trip.tariffId} />
       </details>
 
-      <div className="menu">
-        <TripExport label={en.result.exportJSON} name={`trip-${trip.id}.json`} format="json" trips={[updated]} disabled={invalidMeter} />
-        <TripExport label={en.result.exportCSV} name={`trip-${trip.id}.csv`} format="csv" trips={[updated]} disabled={invalidMeter} />
-      </div>
+      <details className="card">
+        <summary>{en.shared.tariffVerification}</summary>
+        <TariffDetails tariffId={trip.tariffId} />
+      </details>
+      <details className="card" aria-label={en.result.inputQuality}>
+        <summary>{en.result.inputQuality}</summary>
+        <Row label={en.result.recordedInputQualityScore} value={en.result.qualityScore(Math.round(trip.confidence * 100))} />
+        <p>{en.result.thisExistingScoreReflectsGPSCoverage}</p>
+      </details>
       <Disclaimer />
     </>
   );

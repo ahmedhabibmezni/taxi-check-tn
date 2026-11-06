@@ -1,0 +1,3 @@
+// Draft permission descriptions; native and linguistic review pending.
+"NSLocationWhenInUseUsageDescription" = "يستخدم Taxi Check الموقع أثناء رحلة حية لتقدير المسافة والأجرة. يعمل الحساب اليدوي دون موقع.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "أثناء رحلة حية، يستخدم Taxi Check الموقع في الخلفية أو والشاشة مقفلة لمتابعة تقدير المسافة والأجرة. افتح Taxi Check واستخدم إنهاء الرحلة لطلب الإيقاف.";

@@ -1,5 +1,6 @@
 import { getMessages, useMessages } from '../localization';
 import { LanguageSelector } from './LanguageSelector';
+import { SharedLinkManager } from './HostedCard';
 import { presentMessage } from '../localization/messages';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { resolveTariff } from '../config/tariffs/status';
@@ -12,6 +13,11 @@ export function Header({ title, onBack, focusKey }: { title: string; onBack?: ()
   useEffect(() => { heading.current?.focus(); }, [focusKey]);
   return (
     <>
+    <div className="masthead">
+      <span className="brand" dir="ltr"><img src="./icons/icon.svg" alt="" />Taxi Check TN</span>
+      <LanguageSelector />
+    </div>
+    <SharedLinkManager />
     <header className="header">
       {onBack && (
         <button type="button" className="back" onClick={onBack} aria-label={en.shared.back}>
@@ -20,7 +26,6 @@ export function Header({ title, onBack, focusKey }: { title: string; onBack?: ()
       )}
       <h1 ref={heading} tabIndex={-1}>{title}</h1>
     </header>
-    <LanguageSelector />
     </>
   );
 }

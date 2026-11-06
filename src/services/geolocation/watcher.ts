@@ -1,3 +1,4 @@
+import { isAndroidPlatform } from '../../platform/capabilities';
 import { getMessages } from '../../localization';
 import type { GpsSample } from '../../domain/trip/gpsTrack';
 import { Capacitor, registerPlugin } from '@capacitor/core';
@@ -18,7 +19,7 @@ function watchNative(onSample: (s: GpsSample) => void, onError: (e: GpsError) =>
   const start = async () => {
     // Notifications explain the foreground service; location is requested by the
     // GPS plugin separately. Refusing notifications must not disable manual mode.
-    try {
+    if(isAndroidPlatform())try {
       const permission = await LocalNotifications.checkPermissions();
       if (permission.display === 'prompt') await LocalNotifications.requestPermissions();
     } catch { /* Location can still run with notifications blocked. */ }
@@ -39,7 +40,7 @@ function watchNative(onSample: (s: GpsSample) => void, onError: (e: GpsError) =>
           accuracy: position.accuracy, speed: position.speed });
       }
     });
-    // The user may end the ride while the Android permission dialog is open.
+    // The user may end the ride while the location permission dialog is open.
     if (cancelled) await backgroundGps.removeWatcher({ id: watcherId });
   };
   void start().catch((error: { code?: string }) => {

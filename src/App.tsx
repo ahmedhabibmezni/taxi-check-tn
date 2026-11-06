@@ -1,7 +1,7 @@
 import { useMessages } from './localization';
 import { presentMessage } from './localization/messages';
 import { useEffect, useState } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { isAndroidPlatform } from './platform/capabilities';
 import { App as NativeApp } from '@capacitor/app';
 import { ACTIVE_TARIFF_ID, getActiveTariff } from './config/tariffs';
 import { resolveTariff, type TariffStatus } from './config/tariffs/status';
@@ -49,7 +49,7 @@ function RideApp({ initialRead }: { initialRead: ReturnType<typeof loadActiveRid
   const [endedResult, setEndedResult] = useState<{ trip: TripRecord; meterText?: string } | null>(null);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!isAndroidPlatform()) return;
     const listener = NativeApp.addListener('backButton', () => {
       if ((live.ride && !live.nativeRestartBlocked) || screen.name === 'home') { void NativeApp.minimizeApp(); return; }
       setScreen(screen.name === 'result' && screen.from === 'history' ? { name: 'history' } : { name: 'home' });
@@ -157,24 +157,26 @@ function Home({ supp, setSupp, onStart, go, hasRecovery, storageRecovery, restar
   const en = useMessages();
   const tariff = getActiveTariff();
   return (
-    <main>
-      <Header title={en.app.brand} />
-      <p>{en.app.independentFareEstimatesForIndividualTaxis}</p>
-      <p className="notice">{en.shared.tariffNotice(tariff.notice)}</p>
+    <main className="home-page">
+      <Header title={en.app.homeTitle} />
+      <p className="home-intro">{en.app.independentFareEstimatesForIndividualTaxis}</p>
+      <p className="notice small source-notice">{en.shared.tariffNotice(tariff.notice)}</p>
       {hasRecovery && <p className="notice">{storageRecovery ? en.activeStorage.blocked : en.app.anUnfinishedRideNeedsRecoveryIts}</p>}
       {restartBlocked && <p className="notice" role="status">{en.app.androidServiceShutdownIsUnconfirmedForce}</p>}
       {guardError && <p className="error" role="alert">{presentMessage(guardError)}</p>}
       {restartBlocked && !hasRecovery && <button type="button" className="btn secondary" onClick={onRecovery}>{en.app.reviewAndroidRecovery}</button>}
-      <p className="small">{en.app.locationPermissionIsRequestedWhenYou}</p>
-      <p className="small">{en.privacy.endLive(en.live.endRide)}</p>
-      <p className="small">{en.privacy.manualAlternative}</p>
+      <section className="prestart">
+        <p>{en.app.locationPermissionIsRequestedWhenYou}</p>
+        <p>{en.privacy.endLive(en.live.endRide)}</p>
+        <p>{en.privacy.manualAlternative}</p>
+      </section>
       <button type="button" className="btn primary huge" onClick={onStart} disabled={restartBlocked && !hasRecovery}>
         {hasRecovery ? storageRecovery ? en.activeStorage.review : en.app.reviewRecoveredRide : en.app.startRide}
       </button>
       {onEndedResult && <button type="button" className="btn secondary" onClick={onEndedResult}>{en.cleanup.viewResult}</button>}
       <button type="button" className="btn secondary" onClick={() => go({ name: 'manual' })}>{en.app.manualCalculator}</button>
       <SupplementsInput value={supp} onChange={setSupp} />
-      <nav className="menu">
+      <nav className="menu home-links">
         <button type="button" className="btn secondary" onClick={() => go({ name: 'history' })}>{en.app.tripHistory}</button>
         <button type="button" className="btn secondary" onClick={() => go({ name: 'about' })}>{en.app.aboutTariff}</button>
       </nav>

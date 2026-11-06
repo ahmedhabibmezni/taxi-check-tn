@@ -4,6 +4,7 @@ dev-dist
 coverage
 .claude
 .tools/
+.local-card-service/
 artifacts/
 *.keystore
 *.jks

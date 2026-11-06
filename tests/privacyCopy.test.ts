@@ -3,7 +3,8 @@ import { createElement } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
-import { TripExport } from '../src/components/TripExport';
+import { TripCardExport } from '../src/components/TripCardExport';
+import { cardFixture } from './fixtures/card';
 import { catalogs, selectLanguage, type Language } from '../src/localization';
 
 const state = vi.hoisted(() => ({ watch: vi.fn(() => vi.fn()), list: vi.fn(async () => []),
@@ -43,18 +44,13 @@ it.each(['aeb', 'ar', 'fr', 'en'] as Language[])('keeps essential %s explanation
   expect(state.watch).not.toHaveBeenCalled(); expect(state.save).not.toHaveBeenCalled(); expect(state.remove).not.toHaveBeenCalled();
 });
 
-it.each(['aeb', 'ar', 'fr', 'en'] as Language[])('keeps %s export privacy options/defaults/focus without exporting merely to read', language => {
+it.each(['aeb', 'ar', 'fr', 'en'] as Language[])('keeps %s card choices, privacy and focus without automatic upload', language => {
   selectLanguage(language); const copy = catalogs[language];
-  render(createElement(TripExport, { label: copy.result.exportJSON, name: 'synthetic.json', format: 'json', trips: [] }));
-  const trigger = screen.getByRole('button', { name: copy.result.exportJSON }); fireEvent.click(trigger);
-  expect(document.activeElement).toBe(screen.getByRole('heading', { name: copy.export.optionsTitle(copy.result.exportJSON) }));
-  expect(screen.getByText(copy.export.coordinatesCanRevealWhereAJourney)).toBeTruthy();
-  expect(screen.getByText(copy.privacy.recipientCopies)).toBeTruthy();
-  const choice = screen.getByRole('checkbox', { name: copy.export.includePreciseStartEndCoordinatesFor }) as HTMLInputElement;
-  expect(choice.checked).toBe(false); expect(choice.getAttribute('aria-describedby')).toBe(screen.getByText(copy.export.coordinatesCanRevealWhereAJourney).id);
-  fireEvent.click(screen.getByText(copy.privacy.cacheTitle));
-  expect(screen.getByText(copy.privacy.exportCache).closest('details')?.open).toBe(true);
-  expect(screen.getByRole('button', { name: copy.export.continueExport }).hasAttribute('disabled')).toBe(false);
-  fireEvent.click(screen.getByRole('button', { name: copy.export.closeExportOptions }));
-  expect(document.activeElement).toBe(trigger); expect(state.download).not.toHaveBeenCalled();
+  render(createElement(TripCardExport, { trip:cardFixture() }));
+  const trigger=screen.getByRole('button',{name:copy.card.open});fireEvent.click(trigger);
+  expect(document.activeElement).toBe(screen.getByRole('heading',{name:copy.card.title}));
+  expect(screen.getByText(copy.card.privacy)).toBeTruthy();expect(screen.getByText(copy.privacy.recipientCopies)).toBeTruthy();
+  expect((screen.getByRole('checkbox',{name:copy.card.includeMeter}) as HTMLInputElement).checked).toBe(false);
+  fireEvent.click(screen.getByRole('button',{name:copy.card.close}));expect(document.activeElement).toBe(trigger);
+  expect(state.download).not.toHaveBeenCalled();
 });

@@ -10,7 +10,7 @@ const fixtures = vi.hoisted(() => ({
   watch: vi.fn(() => vi.fn()), stopKnown: vi.fn(), native: false,
   list: vi.fn(), save: vi.fn(), remove: vi.fn(),
 }));
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => fixtures.native } }));
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => fixtures.native, getPlatform: () => fixtures.native ? 'android' : 'web' } }));
 vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn(async () => ({ remove: vi.fn() })), minimizeApp: vi.fn() } }));
 vi.mock('../src/services/geolocation/watcher', () => ({
   watchPosition: fixtures.watch, stopKnownPositionWatches: fixtures.stopKnown, requestWakeLock: vi.fn(async () => null),

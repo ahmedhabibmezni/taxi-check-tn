@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from 'react';
+import { isIosPlatform } from '../platform/capabilities';
+import { iosMessages } from './ios';
 import { en } from './en';
 import { aeb } from './aeb';
 import { ar } from './ar';
@@ -43,5 +45,5 @@ function subscribe(listener: () => void) {
   return () => { listeners.delete(listener); };
 }
 export function useLanguage(): Language { return useSyncExternalStore(subscribe, getLanguage, () => 'aeb'); }
-export function useMessages(): Messages { return catalogs[useLanguage()]; }
-export function getMessages(): Messages { return catalogs[getLanguage()]; }
+export function useMessages(): Messages { const language=useLanguage();return isIosPlatform()?iosMessages(catalogs[language],language):catalogs[language]; }
+export function getMessages(): Messages { const language=getLanguage();return isIosPlatform()?iosMessages(catalogs[language],language):catalogs[language]; }

@@ -11,7 +11,7 @@ import * as calculator from '../src/domain/fare/calculator';
 
 const gps = vi.hoisted(() => ({ native: false, stop: vi.fn(), watch: vi.fn(), stopKnown: vi.fn() }));
 const store = vi.hoisted(() => ({ save: vi.fn(), list: vi.fn(), remove: vi.fn() }));
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => gps.native } }));
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => gps.native, getPlatform: () => gps.native ? 'android' : 'web' } }));
 vi.mock('../src/services/geolocation/watcher', () => ({ watchPosition: gps.watch,
   stopKnownPositionWatches: gps.stopKnown, requestWakeLock: vi.fn(async () => null) }));
 vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn(async () => ({ remove: vi.fn() })), minimizeApp: vi.fn() } }));

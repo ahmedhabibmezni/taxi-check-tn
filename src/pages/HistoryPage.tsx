@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import type { TripRecord } from '../domain/trip/types';
 import { tripStore } from '../storage/tripStore';
 import { readCompletedHistory } from '../storage/completedTrip';
-import { TripExport } from '../components/TripExport';
 import { formatTnd } from '../utils/money';
 import { Header, km, minutes } from '../components/ui';
 
@@ -82,10 +81,6 @@ export function HistoryPage({ onBack, onOpen, estimatesUnavailable = false }: Pr
           <button type="button" className="btn link danger" onClick={() => remove(t)}>{en.history.delete}</button>
         </article>
       ))}
-      {unreadable > 0 && trips && trips.length > 0 && <p className="notice">{en.historyRead.bulkBlocked(unreadable)}</p>}
-      {trips && trips.length > 0 && unreadable === 0 && (
-        <TripExport label={en.history.exportAllAsCSV} name="taxi-trips.csv" format="csv" trips={trips} />
-      )}
     </main>
   );
 }
